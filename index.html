@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GELM • Música</title>
+
+<style>
+html,body{
+  margin:0;
+  height:100%;
+  background:#000;
+  color:#fff;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+.app{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:16px;
+}
+
+/* TÍTULO CANCIÓN */
+.title{
+  text-align:center;
+  font-size:18px;
+  font-weight:600;
+  letter-spacing:1px;
+  margin-top:20px;
+  color:#eaeaea;
+}
+
+/* PLAYER */
+.player{
+  display:flex;
+  justify-content:center;
+  margin:30px 0;
+}
+
+audio{
+  width:100%;
+  max-width:420px;
+  background:#000;
+}
+
+/* SELECT */
+select{
+  width:100%;
+  max-width:420px;
+  margin:0 auto;
+  background:#000;
+  color:#00ff99;
+  border:1px solid #00ff99;
+  border-radius:8px;
+  padding:10px;
+  font-size:14px;
+}
+
+/* FOOTER */
+.footer{
+  text-align:center;
+  font-size:11px;
+  color:#00ff99;
+  opacity:.8;
+  margin-bottom:10px;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- TÍTULO -->
+  <div class="title" id="songTitle">
+    Selecciona una canción
+  </div>
+
+  <!-- PLAYER -->
+  <div class="player">
+    <audio id="audio" controls></audio>
+  </div>
+
+  <!-- LISTA -->
+  <select id="lista">
+    <option value="">Elegir canción</option>
+  </select>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Created by GELM<br>
+    © Todos los derechos reservados
+  </div>
+
+</div>
+
+<script>
+const audio = document.getElementById('audio');
+const lista = document.getElementById('lista');
+const title = document.getElementById('songTitle');
+
+let playlist = [];
+
+/* CARGAR JSON */
+fetch('https://gelmhistoria.webcindario.com/musica/canciones.json',{cache:'no-cache'})
+  .then(r=>r.json())
+  .then(data=>{
+    playlist = data.filter(d=>d.url && d.title);
+
+    playlist.forEach((s,i)=>{
+      const o=document.createElement('option');
+      o.value=i;
+      o.textContent=s.title;
+      lista.appendChild(o);
+    });
+  });
+
+/* CAMBIO CANCIÓN */
+lista.addEventListener('change',()=>{
+  const i = lista.value;
+  if(i==="") return;
+  audio.src = playlist[i].url;
+  title.textContent = playlist[i].title;
+  audio.play().catch(()=>{});
+});
+
+/* ACTUALIZAR TÍTULO AL TERMINAR */
+audio.addEventListener('ended',()=>{
+  title.textContent = "Selecciona una canción";
+});
+</script>
+</body>
+</html>
