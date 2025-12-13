@@ -1,196 +1,151 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GELM · Music</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GELM • Música</title>
+
+<link rel="manifest" href="manifest.json">
 
 <style>
-html,body{
+body{
   margin:0;
-  height:100%;
+  height:100vh;
   background:#000;
   color:#fff;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-}
-
-.app{
-  min-height:100vh;
   display:flex;
-  flex-direction:column;
-  justify-content:center;
   align-items:center;
-  gap:14px;
-  padding:16px;
+  justify-content:center;
+  font-family:system-ui,Segoe UI,Arial;
 }
-
-/* TITULO */
-#songTitle{
-  font-size:16px;
-  font-weight:600;
-  letter-spacing:0.6px;
-  opacity:.95;
-}
-
-/* PROGRESO */
-.progress{
+.app{
   width:100%;
-  max-width:360px;
-  height:3px;
-  background:#222;
-  border-radius:2px;
-  overflow:hidden;
+  max-width:420px;
+  text-align:center;
 }
-.progress span{
-  display:block;
+.title{
+  font-size:18px;
+  margin-bottom:8px;
+}
+.progress{
+  height:2px;
+  background:#333;
+  margin:8px 0 14px;
+  position:relative;
+}
+.bar{
   height:100%;
   width:0%;
-  background:#fff;
+  background:#0f0;
 }
-
-/* CONTROLES */
 .controls{
   display:flex;
-  align-items:center;
-  gap:26px;
-}
-.btn{
-  background:none;
-  border:none;
-  color:#fff;
+  justify-content:center;
+  gap:24px;
   font-size:22px;
-  cursor:pointer;
-  opacity:.9;
 }
-.btn.big{font-size:32px}
-
-/* SELECT */
 select{
+  margin-top:14px;
   width:100%;
-  max-width:360px;
   background:#000;
   color:#0f0;
   border:1px solid #0f0;
   padding:6px;
-  border-radius:6px;
 }
-
-/* FOOTER */
 .footer{
-  margin-top:10px;
-  font-size:11px;
+  margin-top:14px;
+  font-size:12px;
   color:#0f0;
-  opacity:.7;
 }
 </style>
 </head>
 
 <body>
 <div class="app">
-
-  <div id="songTitle">Cargando...</div>
-
-  <div class="progress"><span id="bar"></span></div>
+  <div id="title" class="title">Cargando…</div>
+  <div class="progress"><div id="bar" class="bar"></div></div>
 
   <div class="controls">
-    <button class="btn" id="shuffle">🔀</button>
-    <button class="btn" id="prev">⏮</button>
-    <button class="btn big" id="play">⏸</button>
-    <button class="btn" id="next">⏭</button>
+    <span id="prev">⏮</span>
+    <span id="play">⏯</span>
+    <span id="next">⏭</span>
   </div>
 
   <select id="list"></select>
-
   <div class="footer">Created by GELM</div>
-
-  <audio id="audio" crossorigin="anonymous"></audio>
-
 </div>
+
+<audio id="audio"></audio>
 
 <script>
 const audio = document.getElementById("audio");
-const title = document.getElementById("songTitle");
+const titleEl = document.getElementById("title");
 const bar = document.getElementById("bar");
 const list = document.getElementById("list");
+const playBtn = document.getElementById("play");
+const nextBtn = document.getElementById("next");
+const prevBtn = document.getElementById("prev");
 
-let songs = [];
-let index = 0;
-let shuffle = true;
+let playlist = [];
+let currentIndex = 0;
 
-/* CARGAR JSON */
-fetch("musica.json",{cache:"no-cache"})
-.then(r=>r.json())
-.then(data=>{
-  songs = data.filter(s=>s.url && s.title);
-  buildList();
-  const saved = localStorage.getItem("gelm-last");
-  index = saved ? parseInt(saved) : Math.floor(Math.random()*songs.length);
-  playSong(index,true);
-});
-
-/* LISTA */
-function buildList(){
-  list.innerHTML="";
-  songs.forEach((s,i)=>{
+fetch("musica.json").then(r=>r.json()).then(data=>{
+  playlist = data.filter(x=>x.title);
+  playlist.forEach((s,i)=>{
     const o=document.createElement("option");
-    o.value=i;
-    o.textContent=s.title;
+    o.value=i; o.textContent=s.title;
     list.appendChild(o);
   });
+  const last = localStorage.getItem("lastSong");
+  playSong(last?Number(last):randomIndex());
+});
+
+function randomIndex(){
+  return Math.floor(Math.random()*playlist.length);
 }
 
-/* PLAY */
-function playSong(i,auto){
-  index=i;
-  audio.src=songs[i].url;
-  title.textContent=songs[i].title;
+function playSong(i){
+  currentIndex=i;
+  audio.src=playlist[i].url;
+  audio.play();
+  titleEl.textContent=playlist[i].title;
   list.value=i;
-  localStorage.setItem("gelm-last",i);
-  if(auto) audio.play().catch(()=>{});
+  updateMediaSession(playlist[i].title);
+  localStorage.setItem("lastSong",i);
 }
 
-/* CONTINUAR AUTOMATICO */
-audio.addEventListener("ended",()=>{
-  next();
-});
+function playNext(){ playSong(randomIndex()); }
+function playPrev(){ playSong(randomIndex()); }
 
-/* PROGRESO */
-audio.addEventListener("timeupdate",()=>{
-  if(audio.duration){
-    bar.style.width=(audio.currentTime/audio.duration*100)+"%";
-  }
-});
+playBtn.onclick=()=>audio.paused?audio.play():audio.pause();
+nextBtn.onclick=playNext;
+prevBtn.onclick=playPrev;
 
-/* CONTROLES */
-document.getElementById("play").onclick=()=>{
-  audio.paused?audio.play():audio.pause();
+audio.ontimeupdate=()=>{
+  bar.style.width=(audio.currentTime/audio.duration*100||0)+"%";
 };
-document.getElementById("next").onclick=next;
-document.getElementById("prev").onclick=()=>{
-  index=(index-1+songs.length)%songs.length;
-  playSong(index,true);
-};
-document.getElementById("shuffle").onclick=()=>{
-  shuffle=!shuffle;
-};
+audio.onended=playNext;
 
-/* SELECT */
-list.onchange=()=>playSong(parseInt(list.value),true);
+list.onchange=()=>playSong(Number(list.value));
 
-function next(){
-  if(shuffle){
-    let n;
-    do{ n=Math.floor(Math.random()*songs.length);}while(n===index);
-    playSong(n,true);
-  }else{
-    index=(index+1)%songs.length;
-    playSong(index,true);
-  }
+function updateMediaSession(title){
+  if(!navigator.mediaSession) return;
+  navigator.mediaSession.metadata=new MediaMetadata({
+    title, artist:"GELM", album:"Música Variada",
+    artwork:[
+      {src:"icons/icon-192.png",sizes:"192x192"},
+      {src:"icons/icon-512.png",sizes:"512x512"}
+    ]
+  });
+  navigator.mediaSession.setActionHandler("play",()=>audio.play());
+  navigator.mediaSession.setActionHandler("pause",()=>audio.pause());
+  navigator.mediaSession.setActionHandler("previoustrack",playPrev);
+  navigator.mediaSession.setActionHandler("nexttrack",playNext);
 }
-  if ("serviceWorker" in navigator) {
+
+if("serviceWorker" in navigator){
   navigator.serviceWorker.register("sw.js");
 }
-
 </script>
 </body>
 </html>
