@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GELM • Música</title>
+<title>GELM · Music</title>
 
 <style>
 html,body{
@@ -18,52 +18,69 @@ html,body{
   min-height:100vh;
   display:flex;
   flex-direction:column;
+  justify-content:center;
   align-items:center;
-  padding:14px 12px;
+  gap:14px;
+  padding:16px;
 }
 
-/* TÍTULO CANCIÓN */
-.title{
-  margin-top:12px;
-  margin-bottom:6px;
-  text-align:center;
+/* TITULO */
+#songTitle{
   font-size:16px;
   font-weight:600;
-  letter-spacing:.8px;
-  color:#eaeaea;
+  letter-spacing:0.6px;
+  opacity:.95;
 }
 
-/* PLAYER */
-.player{
+/* PROGRESO */
+.progress{
   width:100%;
-  max-width:420px;
+  max-width:360px;
+  height:3px;
+  background:#222;
+  border-radius:2px;
+  overflow:hidden;
+}
+.progress span{
+  display:block;
+  height:100%;
+  width:0%;
+  background:#fff;
 }
 
-audio{
-  width:100%;
-  background:#000;
+/* CONTROLES */
+.controls{
+  display:flex;
+  align-items:center;
+  gap:26px;
 }
+.btn{
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:22px;
+  cursor:pointer;
+  opacity:.9;
+}
+.btn.big{font-size:32px}
 
 /* SELECT */
 select{
   width:100%;
-  max-width:420px;
-  margin-top:6px;
+  max-width:360px;
   background:#000;
-  color:#00ff99;
-  border:1px solid #00ff99;
-  border-radius:8px;
-  padding:8px;
-  font-size:14px;
+  color:#0f0;
+  border:1px solid #0f0;
+  padding:6px;
+  border-radius:6px;
 }
 
 /* FOOTER */
 .footer{
-  margin-top:14px;
-  text-align:center;
-  font-size:10px;
-  color:#00ff99;
-  opacity:.75;
+  margin-top:10px;
+  font-size:11px;
+  color:#0f0;
+  opacity:.7;
 }
 </style>
 </head>
@@ -71,92 +88,105 @@ select{
 <body>
 <div class="app">
 
-  <!-- TÍTULO -->
-  <div class="title" id="songTitle">
-    GELM • Música
+  <div id="songTitle">Cargando...</div>
+
+  <div class="progress"><span id="bar"></span></div>
+
+  <div class="controls">
+    <button class="btn" id="shuffle">🔀</button>
+    <button class="btn" id="prev">⏮</button>
+    <button class="btn big" id="play">⏸</button>
+    <button class="btn" id="next">⏭</button>
   </div>
 
-  <!-- PLAYER -->
-  <div class="player">
-    <audio id="audio" controls></audio>
-  </div>
+  <select id="list"></select>
 
-  <!-- LISTA -->
-  <select id="lista">
-    <option value="">Elegir canción</option>
-  </select>
+  <div class="footer">Created by GELM</div>
 
-  <!-- FOOTER -->
-  <div class="footer">
-    Created by GELM · © Todos los derechos reservados
-  </div>
+  <audio id="audio" crossorigin="anonymous"></audio>
 
 </div>
 
 <script>
-const audio = document.getElementById('audio');
-const lista = document.getElementById('lista');
-const title = document.getElementById('songTitle');
+const audio = document.getElementById("audio");
+const title = document.getElementById("songTitle");
+const bar = document.getElementById("bar");
+const list = document.getElementById("list");
 
-let playlist = [];
-let currentIndex = -1;
+let songs = [];
+let index = 0;
+let shuffle = true;
 
-/* Cargar musica.json */
-fetch('./musica.json', { cache:'no-cache' })
-  .then(r => r.json())
-  .then(data => {
+/* CARGAR JSON */
+fetch("musica.json",{cache:"no-cache"})
+.then(r=>r.json())
+.then(data=>{
+  songs = data.filter(s=>s.url && s.title);
+  buildList();
+  const saved = localStorage.getItem("gelm-last");
+  index = saved ? parseInt(saved) : Math.floor(Math.random()*songs.length);
+  playSong(index,true);
+});
 
-    // solo canciones reales
-    playlist = data.filter(d => d.url && d.title);
-
-    playlist.forEach((s, i) => {
-      const o = document.createElement('option');
-      o.value = i;
-      o.textContent = s.title;
-      lista.appendChild(o);
-    });
-
-    // seleccionar aleatoria al entrar
-    selectRandomSong(false);
-  })
-  .catch(err => {
-    title.textContent = "Error cargando música";
-    console.error(err);
+/* LISTA */
+function buildList(){
+  list.innerHTML="";
+  songs.forEach((s,i)=>{
+    const o=document.createElement("option");
+    o.value=i;
+    o.textContent=s.title;
+    list.appendChild(o);
   });
-
-/* seleccionar canción aleatoria */
-function selectRandomSong(autoplay){
-  if(!playlist.length) return;
-
-  let next;
-  do{
-    next = Math.floor(Math.random() * playlist.length);
-  }while(next === currentIndex && playlist.length > 1);
-
-  currentIndex = next;
-  audio.src = playlist[currentIndex].url;
-  title.textContent = playlist[currentIndex].title;
-  lista.value = currentIndex;
-
-  if(autoplay){
-    audio.play().catch(()=>{});
-  }
 }
 
-/* cambio manual */
-lista.addEventListener('change', () => {
-  const i = parseInt(lista.value,10);
-  if(isNaN(i)) return;
-  currentIndex = i;
-  audio.src = playlist[i].url;
-  title.textContent = playlist[i].title;
-  audio.play().catch(()=>{});
+/* PLAY */
+function playSong(i,auto){
+  index=i;
+  audio.src=songs[i].url;
+  title.textContent=songs[i].title;
+  list.value=i;
+  localStorage.setItem("gelm-last",i);
+  if(auto) audio.play().catch(()=>{});
+}
+
+/* CONTINUAR AUTOMATICO */
+audio.addEventListener("ended",()=>{
+  next();
 });
 
-/* al terminar → otra aleatoria */
-audio.addEventListener('ended', () => {
-  selectRandomSong(true);
+/* PROGRESO */
+audio.addEventListener("timeupdate",()=>{
+  if(audio.duration){
+    bar.style.width=(audio.currentTime/audio.duration*100)+"%";
+  }
 });
+
+/* CONTROLES */
+document.getElementById("play").onclick=()=>{
+  audio.paused?audio.play():audio.pause();
+};
+document.getElementById("next").onclick=next;
+document.getElementById("prev").onclick=()=>{
+  index=(index-1+songs.length)%songs.length;
+  playSong(index,true);
+};
+document.getElementById("shuffle").onclick=()=>{
+  shuffle=!shuffle;
+};
+
+/* SELECT */
+list.onchange=()=>playSong(parseInt(list.value),true);
+
+function next(){
+  if(shuffle){
+    let n;
+    do{ n=Math.floor(Math.random()*songs.length);}while(n===index);
+    playSong(n,true);
+  }else{
+    index=(index+1)%songs.length;
+    playSong(index,true);
+  }
+}
 </script>
 </body>
 </html>
