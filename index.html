@@ -22,13 +22,13 @@ html,body{
   padding:16px;
 }
 
-/* TÍTULO CANCIÓN */
+/* TÍTULO */
 .title{
   text-align:center;
   font-size:18px;
   font-weight:600;
   letter-spacing:1px;
-  margin-top:20px;
+  margin-top:18px;
   color:#eaeaea;
 }
 
@@ -72,9 +72,9 @@ select{
 <body>
 <div class="app">
 
-  <!-- TÍTULO -->
+  <!-- TITULO CANCIÓN -->
   <div class="title" id="songTitle">
-    Selecciona una canción
+    GELM • Música
   </div>
 
   <!-- PLAYER -->
@@ -102,33 +102,48 @@ const title = document.getElementById('songTitle');
 
 let playlist = [];
 
-/* CARGAR JSON */
-fetch('https://gelmhistoria.webcindario.com/musica/canciones.json',{cache:'no-cache'})
-  .then(r=>r.json())
-  .then(data=>{
-    playlist = data.filter(d=>d.url && d.title);
+/* CARGAR musica.json */
+fetch('./musica.json', { cache:'no-cache' })
+  .then(r => r.json())
+  .then(data => {
 
-    playlist.forEach((s,i)=>{
-      const o=document.createElement('option');
-      o.value=i;
-      o.textContent=s.title;
+    // solo canciones reales
+    playlist = data.filter(d => d.url && d.title);
+
+    playlist.forEach((s, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = s.title;
       lista.appendChild(o);
     });
+
+    // precargar primera canción (sin autoplay forzado)
+    if(playlist.length){
+      audio.src = playlist[0].url;
+      title.textContent = playlist[0].title;
+      lista.value = 0;
+    }
+  })
+  .catch(err => {
+    title.textContent = "Error cargando música";
+    console.error(err);
   });
 
-/* CAMBIO CANCIÓN */
-lista.addEventListener('change',()=>{
+/* cambio de canción */
+lista.addEventListener('change', () => {
   const i = lista.value;
-  if(i==="") return;
+  if(i === "") return;
   audio.src = playlist[i].url;
   title.textContent = playlist[i].title;
   audio.play().catch(()=>{});
 });
 
-/* ACTUALIZAR TÍTULO AL TERMINAR */
-audio.addEventListener('ended',()=>{
-  title.textContent = "Selecciona una canción";
+/* actualizar título al reproducir */
+audio.addEventListener('play', () => {
+  if(lista.value !== "")
+    title.textContent = playlist[lista.value].title;
 });
 </script>
+
 </body>
 </html>
