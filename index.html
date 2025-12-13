@@ -147,5 +147,19 @@ if("serviceWorker" in navigator){
   navigator.serviceWorker.register("sw.js");
 }
 </script>
+  <script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/play/sw.js')
+      .then(reg => {
+        console.log('SW registrado:', reg.scope);
+      })
+      .catch(err => {
+        console.error('SW error:', err);
+      });
+  });
+}
+</script>
+
 </body>
 </html>
