@@ -1,165 +1,218 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GELM • Música</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GELM Player</title>
 
 <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
 
 <style>
-body{
+html,body{
   margin:0;
-  height:100vh;
+  height:100%;
   background:#000;
   color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-family:system-ui,Segoe UI,Arial;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
 }
+
 .app{
-  width:100%;
-  max-width:420px;
-  text-align:center;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
 }
+
 .title{
   font-size:18px;
-  margin-bottom:8px;
+  font-weight:600;
+  margin-bottom:6px;
 }
+
 .progress{
-  height:2px;
-  background:#333;
-  margin:8px 0 14px;
-  position:relative;
+  width:80%;
+  height:3px;
+  background:#222;
+  border-radius:3px;
+  overflow:hidden;
 }
 .bar{
   height:100%;
   width:0%;
-  background:#0f0;
+  background:#00ff66;
 }
+
 .controls{
   display:flex;
-  justify-content:center;
-  gap:24px;
+  gap:18px;
+  align-items:center;
   font-size:22px;
 }
+
+.controls span{
+  cursor:pointer;
+  user-select:none;
+}
+
 select{
-  margin-top:14px;
-  width:100%;
+  width:80%;
   background:#000;
-  color:#0f0;
-  border:1px solid #0f0;
+  color:#00ff66;
+  border:1px solid #00ff66;
+  border-radius:6px;
   padding:6px;
 }
+
+.offline{
+  font-size:13px;
+  color:#00ff66;
+  display:none;
+}
+
 .footer{
-  margin-top:14px;
-  font-size:12px;
-  color:#0f0;
+  margin-top:6px;
+  font-size:11px;
+  color:#00ff66;
+}
+
+.save{
+  font-size:14px;
+  cursor:pointer;
+  color:#00ff66;
 }
 </style>
 </head>
 
 <body>
 <div class="app">
-  <div id="title" class="title">Cargando…</div>
-  <div class="progress"><div id="bar" class="bar"></div></div>
+
+  <div class="title" id="title">Cargando...</div>
+
+  <div class="progress">
+    <div class="bar" id="bar"></div>
+  </div>
 
   <div class="controls">
+    <span id="shuffle">🔀</span>
     <span id="prev">⏮</span>
     <span id="play">⏯</span>
     <span id="next">⏭</span>
+    <span id="save" class="save">💾</span>
   </div>
 
   <select id="list"></select>
+  <div class="offline" id="offline">✔ Disponible offline</div>
+
   <div class="footer">Created by GELM</div>
+
+  <audio id="audio"></audio>
 </div>
 
-<audio id="audio"></audio>
-
 <script>
-const audio = document.getElementById("audio");
-const titleEl = document.getElementById("title");
-const bar = document.getElementById("bar");
-const list = document.getElementById("list");
-const playBtn = document.getElementById("play");
-const nextBtn = document.getElementById("next");
-const prevBtn = document.getElementById("prev");
-
-let playlist = [];
-let currentIndex = 0;
-
-fetch("musica.json").then(r=>r.json()).then(data=>{
-  playlist = data.filter(x=>x.title);
-  playlist.forEach((s,i)=>{
-    const o=document.createElement("option");
-    o.value=i; o.textContent=s.title;
-    list.appendChild(o);
-  });
-  const last = localStorage.getItem("lastSong");
-  playSong(last?Number(last):randomIndex());
-});
-
-function randomIndex(){
-  return Math.floor(Math.random()*playlist.length);
-}
-
-function playSong(i){
-  currentIndex=i;
-  audio.src=playlist[i].url;
-  audio.play();
-  titleEl.textContent=playlist[i].title;
-  list.value=i;
-  updateMediaSession(playlist[i].title);
-  localStorage.setItem("lastSong",i);
-}
-
-function playNext(){ playSong(randomIndex()); }
-function playPrev(){ playSong(randomIndex()); }
-
-playBtn.onclick=()=>audio.paused?audio.play():audio.pause();
-nextBtn.onclick=playNext;
-prevBtn.onclick=playPrev;
-
-audio.ontimeupdate=()=>{
-  bar.style.width=(audio.currentTime/audio.duration*100||0)+"%";
-};
-audio.onended=playNext;
-
-list.onchange=()=>playSong(Number(list.value));
-
-function updateMediaSession(title){
-  if(!navigator.mediaSession) return;
-  navigator.mediaSession.metadata=new MediaMetadata({
-    title, artist:"GELM", album:"Música Variada",
-    artwork:[
-      {src:"icons/icon-192.png",sizes:"192x192"},
-      {src:"icons/icon-512.png",sizes:"512x512"}
-    ]
-  });
-  navigator.mediaSession.setActionHandler("play",()=>audio.play());
-  navigator.mediaSession.setActionHandler("pause",()=>audio.pause());
-  navigator.mediaSession.setActionHandler("previoustrack",playPrev);
-  navigator.mediaSession.setActionHandler("nexttrack",playNext);
-}
-
+/* PWA */
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("sw.js");
 }
-</script>
-  <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/play/sw.js')
-      .then(reg => {
-        console.log('SW registrado:', reg.scope);
-      })
-      .catch(err => {
-        console.error('SW error:', err);
-      });
+
+const audio = document.getElementById("audio");
+const title = document.getElementById("title");
+const bar = document.getElementById("bar");
+const list = document.getElementById("list");
+const offlineTag = document.getElementById("offline");
+
+const playBtn = document.getElementById("play");
+const nextBtn = document.getElementById("next");
+const prevBtn = document.getElementById("prev");
+const shuffleBtn = document.getElementById("shuffle");
+const saveBtn = document.getElementById("save");
+
+let playlist = [];
+let order = [];
+let index = 0;
+let shuffle = true;
+
+/* Cargar JSON */
+fetch("musica.json").then(r=>r.json()).then(data=>{
+  playlist = data;
+  buildOrder();
+  buildList();
+  playCurrent();
+});
+
+/* Orden aleatorio */
+function buildOrder(){
+  order = [...playlist.keys()];
+  if(shuffle){
+    order.sort(()=>Math.random()-0.5);
+  }
+}
+
+/* UI lista */
+function buildList(){
+  list.innerHTML="";
+  playlist.forEach((s,i)=>{
+    const o=document.createElement("option");
+    o.value=i;
+    o.textContent=s.title;
+    list.appendChild(o);
   });
 }
-</script>
 
+/* Reproducir */
+function playCurrent(){
+  const song = playlist[order[index]];
+  audio.src = song.url;
+  audio.play();
+  title.textContent = song.title;
+  list.value = order[index];
+  checkOffline(song.url);
+
+  if("mediaSession" in navigator){
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.title,
+      artist: "GELM"
+    });
+  }
+}
+
+/* Controles */
+playBtn.onclick = ()=> audio.paused ? audio.play() : audio.pause();
+nextBtn.onclick = ()=>{ index=(index+1)%order.length; playCurrent(); }
+prevBtn.onclick = ()=>{ index=(index-1+order.length)%order.length; playCurrent(); }
+shuffleBtn.onclick = ()=>{ shuffle=!shuffle; buildOrder(); index=0; playCurrent(); }
+
+list.onchange = e=>{
+  index = order.indexOf(+e.target.value);
+  playCurrent();
+};
+
+/* Progreso */
+audio.ontimeupdate = ()=>{
+  if(audio.duration){
+    bar.style.width = (audio.currentTime/audio.duration*100)+"%";
+  }
+};
+
+/* Auto siguiente */
+audio.onended = ()=> nextBtn.onclick();
+
+/* Guardar offline */
+saveBtn.onclick = async ()=>{
+  const url = playlist[order[index]].url;
+  const cache = await caches.open("gelm-cache-v2");
+  await cache.add(url);
+  checkOffline(url);
+  alert("Canción guardada offline 💾");
+};
+
+async function checkOffline(url){
+  const cache = await caches.open("gelm-cache-v2");
+  const res = await cache.match(url);
+  offlineTag.style.display = res ? "block" : "none";
+}
+</script>
 </body>
 </html>
