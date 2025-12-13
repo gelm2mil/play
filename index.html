@@ -18,30 +18,29 @@ html,body{
   min-height:100vh;
   display:flex;
   flex-direction:column;
-  justify-content:space-between;
-  padding:16px;
+  align-items:center;
+  padding:14px 12px;
 }
 
-/* TÍTULO */
+/* TÍTULO CANCIÓN */
 .title{
+  margin-top:12px;
+  margin-bottom:6px;
   text-align:center;
-  font-size:18px;
+  font-size:16px;
   font-weight:600;
-  letter-spacing:1px;
-  margin-top:18px;
+  letter-spacing:.8px;
   color:#eaeaea;
 }
 
 /* PLAYER */
 .player{
-  display:flex;
-  justify-content:center;
-  margin:30px 0;
+  width:100%;
+  max-width:420px;
 }
 
 audio{
   width:100%;
-  max-width:420px;
   background:#000;
 }
 
@@ -49,22 +48,22 @@ audio{
 select{
   width:100%;
   max-width:420px;
-  margin:0 auto;
+  margin-top:6px;
   background:#000;
   color:#00ff99;
   border:1px solid #00ff99;
   border-radius:8px;
-  padding:10px;
+  padding:8px;
   font-size:14px;
 }
 
 /* FOOTER */
 .footer{
+  margin-top:14px;
   text-align:center;
-  font-size:11px;
+  font-size:10px;
   color:#00ff99;
-  opacity:.8;
-  margin-bottom:10px;
+  opacity:.75;
 }
 </style>
 </head>
@@ -72,7 +71,7 @@ select{
 <body>
 <div class="app">
 
-  <!-- TITULO CANCIÓN -->
+  <!-- TÍTULO -->
   <div class="title" id="songTitle">
     GELM • Música
   </div>
@@ -89,8 +88,7 @@ select{
 
   <!-- FOOTER -->
   <div class="footer">
-    Created by GELM<br>
-    © Todos los derechos reservados
+    Created by GELM · © Todos los derechos reservados
   </div>
 
 </div>
@@ -101,8 +99,9 @@ const lista = document.getElementById('lista');
 const title = document.getElementById('songTitle');
 
 let playlist = [];
+let currentIndex = -1;
 
-/* CARGAR musica.json */
+/* Cargar musica.json */
 fetch('./musica.json', { cache:'no-cache' })
   .then(r => r.json())
   .then(data => {
@@ -117,33 +116,47 @@ fetch('./musica.json', { cache:'no-cache' })
       lista.appendChild(o);
     });
 
-    // precargar primera canción (sin autoplay forzado)
-    if(playlist.length){
-      audio.src = playlist[0].url;
-      title.textContent = playlist[0].title;
-      lista.value = 0;
-    }
+    // seleccionar aleatoria al entrar
+    selectRandomSong(false);
   })
   .catch(err => {
     title.textContent = "Error cargando música";
     console.error(err);
   });
 
-/* cambio de canción */
+/* seleccionar canción aleatoria */
+function selectRandomSong(autoplay){
+  if(!playlist.length) return;
+
+  let next;
+  do{
+    next = Math.floor(Math.random() * playlist.length);
+  }while(next === currentIndex && playlist.length > 1);
+
+  currentIndex = next;
+  audio.src = playlist[currentIndex].url;
+  title.textContent = playlist[currentIndex].title;
+  lista.value = currentIndex;
+
+  if(autoplay){
+    audio.play().catch(()=>{});
+  }
+}
+
+/* cambio manual */
 lista.addEventListener('change', () => {
-  const i = lista.value;
-  if(i === "") return;
+  const i = parseInt(lista.value,10);
+  if(isNaN(i)) return;
+  currentIndex = i;
   audio.src = playlist[i].url;
   title.textContent = playlist[i].title;
   audio.play().catch(()=>{});
 });
 
-/* actualizar título al reproducir */
-audio.addEventListener('play', () => {
-  if(lista.value !== "")
-    title.textContent = playlist[lista.value].title;
+/* al terminar → otra aleatoria */
+audio.addEventListener('ended', () => {
+  selectRandomSong(true);
 });
 </script>
-
 </body>
 </html>
