@@ -106,7 +106,7 @@ let index = Math.floor(Math.random()*1000);
 let shuffle = true;
 
 /* Load songs */
-fetch("musica.json")
+fetch("https://gelm2mil.github.io/GT-GELM/songs.json")
 .then(r=>r.json())
 .then(data=>{
   songs = data.filter(s=>s.url);
